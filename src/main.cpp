@@ -1,4 +1,5 @@
 #include "base/types.h"
+#include "base/logger.h"
 #include "vulkan_engine.h"
 
 #include <SDL3/SDL.h>
@@ -12,7 +13,7 @@ static inline auto chk(bool result) -> void
 {
     if (!result)
     {
-        SDL_Log("SDL call returned an error: %s\n", SDL_GetError());
+        logger::logError("SDL call returned an error: {}", SDL_GetError());
         exit(result);
     }
 }

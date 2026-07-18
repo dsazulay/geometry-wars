@@ -1,4 +1,5 @@
 #include "vulkan_engine.h"
+#include "base/logger.h"
 
 #define VOLK_IMPLEMENTATION
 #include <vulkan/vulkan.h>
@@ -14,8 +15,7 @@ static inline auto chk(VkResult result) -> void
 {
     if (result != VK_SUCCESS)
     {
-        //LOG_ERROR("Vulkan call returned an error ({})", (int)result);
-        // TODO: return error
+        logger::logError("Vulkan call returned an error ({})", (i32)result);
         exit(result);
     }
 }
@@ -29,8 +29,7 @@ static inline auto chkSwapchain(VkResult result) -> void
             updateSwapchain = true;
             return;
         }
-        //LOG_ERROR("Vulkan call returned an error ({})", (int)result);
-        // TODO: return error
+        logger::logError("Vulkan call returned an error ({})", (i32)result);
         exit(result);
     }
 }

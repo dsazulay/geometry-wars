@@ -25,7 +25,11 @@ FetchContent_MakeAvailable(glm)
 
 find_library(SDL_LIBRARY NAMES SDL3 HINTS "$ENV{VULKAN_SDK}/lib" REQUIRED)
 
-add_executable(geometry-wars src/main.cpp src/vulkan_engine.cpp)
+add_executable(geometry-wars
+    src/main.cpp
+    src/vulkan_engine.cpp
+    src/base/logger.cpp
+)
 
 target_link_libraries(geometry-wars PRIVATE ${SDL_LIBRARY} glm)
 if (TARGET Vulkan::Vulkan)
@@ -37,3 +41,4 @@ elseif (NOT WIN32)
 endif()
 
 target_compile_options(geometry-wars PRIVATE -Wall -Wextra -Wshadow -pedantic -g)
+target_compile_definitions(geometry-wars PRIVATE $<$<CONFIG:Debug>:DEBUG>)   
