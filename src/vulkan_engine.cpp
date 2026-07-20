@@ -7,7 +7,6 @@
 #define VMA_IMPLEMENTATION
 #include <vma/vk_mem_alloc.h>
 
-bool updateSwapchain{ false };
 glm::vec3 camPos{ 0.0f, 0.0f, -6.0f };
 glm::vec3 objectRotations[3]{};
 
@@ -20,7 +19,7 @@ static inline auto chk(VkResult result) -> void
     }
 }
 
-static inline auto chkSwapchain(VkResult result) -> void
+inline auto VulkanEngine::chkSwapchain(VkResult result) -> void
 {
     if (result < VK_SUCCESS)
     {
@@ -162,6 +161,16 @@ auto VulkanEngine::init(u32 extensionsCount, const char* const* requiredExtensio
     createImguiDescriptorPool();
 }
 
+auto VulkanEngine::update() -> void
+{
+    if (updateSwapchain) {
+        updateSwapchain = false;
+        chk(vkDeviceWaitIdle(m_device));
+
+        recreateSwapchain();
+    }
+}
+
 auto VulkanEngine::setUniformData(GameObjectID id, void* data, u64 size) -> void
 {
     m_gameObjects[(u64) id].shaderData.data = data;
@@ -173,7 +182,7 @@ auto VulkanEngine::render() -> void
     // Sync
     chk(vkWaitForFences(m_device, 1, &m_fences[m_frameIndex], true, UINT64_MAX));
     chk(vkResetFences(m_device, 1, &m_fences[m_frameIndex]));
-    chkSwapchain(vkAcquireNextImageKHR(m_device, m_swapchain, UINT64_MAX, m_presentSemaphores[m_frameIndex], VK_NULL_HANDLE, &m_imageIndex));
+    chkSwapchain(vkAcquireNextImageKHR(m_device, m_swapchain, UINT64_MAX, m_imageAcquiredSemaphores[m_frameIndex], VK_NULL_HANDLE, &m_imageIndex));
 
     for (GameObject& go : m_gameObjects)
     {
@@ -246,8 +255,8 @@ auto VulkanEngine::render() -> void
         .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
         .renderArea{
             .extent{
-                .width = static_cast<u32>(m_windowSize.x),
-                .height = static_cast<u32>(m_windowSize.y)
+                .width = static_cast<u32>(windowSize.x),
+                .height = static_cast<u32>(windowSize.y)
             }
         },
         .layerCount = 1,
@@ -257,16 +266,16 @@ auto VulkanEngine::render() -> void
     };
     vkCmdBeginRendering(cb, &renderingInfo);
     VkViewport vp{
-        .width = static_cast<float>(m_windowSize.x),
-        .height = static_cast<float>(m_windowSize.y),
+        .width = static_cast<float>(windowSize.x),
+        .height = static_cast<float>(windowSize.y),
         .minDepth = 0.0f,
         .maxDepth = 1.0f
     };
     vkCmdSetViewport(cb, 0, 1, &vp);
     VkRect2D scissor{
         .extent{
-            .width = static_cast<u32>(m_windowSize.x),
-            .height = static_cast<u32>(m_windowSize.y)
+            .width = static_cast<u32>(windowSize.x),
+            .height = static_cast<u32>(windowSize.y)
         }
     };
 
@@ -314,33 +323,24 @@ auto VulkanEngine::render() -> void
     VkSubmitInfo submitInfo{
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &m_presentSemaphores[m_frameIndex],
+        .pWaitSemaphores = &m_imageAcquiredSemaphores[m_frameIndex],
         .pWaitDstStageMask = &waitStages,
         .commandBufferCount = 1,
         .pCommandBuffers = &cb,
         .signalSemaphoreCount = 1,
-        .pSignalSemaphores = &m_renderSemaphores[m_imageIndex],
+        .pSignalSemaphores = &m_renderCompleteSemaphores[m_imageIndex],
     };
     chk(vkQueueSubmit(m_queue, 1, &submitInfo, m_fences[m_frameIndex]));
     m_frameIndex = (m_frameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
     VkPresentInfoKHR presentInfo{
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &m_renderSemaphores[m_imageIndex],
+        .pWaitSemaphores = &m_renderCompleteSemaphores[m_imageIndex],
         .swapchainCount = 1,
         .pSwapchains = &m_swapchain,
         .pImageIndices = &m_imageIndex
     };
     chkSwapchain(vkQueuePresentKHR(m_queue, &presentInfo));
-
-    if (updateSwapchain) {
-        // TODO: fix this
-        //glfwGetFramebufferSize(m_window, &m_windowSize.x, &m_windowSize.y);
-        updateSwapchain = false;
-        chk(vkDeviceWaitIdle(m_device));
-
-        createSwapchain();
-    }
 }
 
 auto VulkanEngine::terminate() -> void
@@ -349,15 +349,15 @@ auto VulkanEngine::terminate() -> void
     for (u32 i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
     {
         vkDestroyFence(m_device, m_fences[i], nullptr);
-        vkDestroySemaphore(m_device, m_presentSemaphores[i], nullptr);
+        vkDestroySemaphore(m_device, m_imageAcquiredSemaphores[i], nullptr);
         for (GameObject& go : m_gameObjects)
         {
             vmaDestroyBuffer(m_allocator, go.shaderDataBuffers[i].buffer, go.shaderDataBuffers[i].allocation);
         }
     }
-    for (u64 i = 0; i < m_renderSemaphores.size(); ++i)
+    for (u64 i = 0; i < m_renderCompleteSemaphores.size(); ++i)
     {
-        vkDestroySemaphore(m_device, m_renderSemaphores[i], nullptr);
+        vkDestroySemaphore(m_device, m_renderCompleteSemaphores[i], nullptr);
     }
     vmaDestroyImage(m_allocator, m_depthImage, m_depthImageAllocation);
     vkDestroyImageView(m_device, m_depthImageView, nullptr);
@@ -526,28 +526,26 @@ auto VulkanEngine::waitDevice() -> void
 auto VulkanEngine::setSurfaceAndWindowSize(VkSurfaceKHR surface, u32 sizeX, u32 sizeY) -> void
 {
     m_surface = surface;
-    m_windowSize.x = sizeX;
-    m_windowSize.y = sizeY;
+    windowSize.x = sizeX;
+    windowSize.y = sizeY;
 }
 
 auto VulkanEngine::createSwapchain() -> void
 {
-    VkSurfaceCapabilitiesKHR surfaceCaps{};
-    chk(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_physicalDevice, m_surface, &surfaceCaps));
-    VkExtent2D swapchainExtent{ surfaceCaps.currentExtent };
-    if (surfaceCaps.currentExtent.width == 0xFFFFFFFF) {
+    chk(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_physicalDevice, m_surface, &m_surfaceCaps));
+    VkExtent2D swapchainExtent{ m_surfaceCaps.currentExtent };
+    if (m_surfaceCaps.currentExtent.width == 0xFFFFFFFF) {
         swapchainExtent = {
-            .width = static_cast<u32>(m_windowSize.x),
-            .height = static_cast<u32>(m_windowSize.y)
+            .width = static_cast<u32>(windowSize.x),
+            .height = static_cast<u32>(windowSize.y)
         };
     }
 
-    const VkFormat imageFormat{ VK_FORMAT_B8G8R8A8_UNORM};
     VkSwapchainCreateInfoKHR swapchainCI{
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
         .surface = m_surface,
-        .minImageCount = surfaceCaps.minImageCount,
-        .imageFormat = imageFormat,
+        .minImageCount = m_surfaceCaps.minImageCount,
+        .imageFormat = m_imageFormat,
         .imageColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR,
         .imageExtent{ .width = swapchainExtent.width, .height = swapchainExtent.height },
         .imageArrayLayers = 1,
@@ -556,7 +554,8 @@ auto VulkanEngine::createSwapchain() -> void
         .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
         .presentMode = VK_PRESENT_MODE_FIFO_KHR
     };
-    chk(vkCreateSwapchainKHR(m_device, &swapchainCI, nullptr, &m_swapchain));
+    m_swapchainCI = swapchainCI;
+    chk(vkCreateSwapchainKHR(m_device, &m_swapchainCI, nullptr, &m_swapchain));
     chk(vkGetSwapchainImagesKHR(m_device, m_swapchain, &m_imageCount, nullptr));
     m_swapchainImages.resize(m_imageCount);
     chk(vkGetSwapchainImagesKHR(m_device, m_swapchain, &m_imageCount, m_swapchainImages.data()));
@@ -567,7 +566,7 @@ auto VulkanEngine::createSwapchain() -> void
             .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
             .image = m_swapchainImages[i],
             .viewType = VK_IMAGE_VIEW_TYPE_2D,
-            .format = imageFormat,
+            .format = m_imageFormat,
             .subresourceRange{
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                 .levelCount = 1,
@@ -582,25 +581,24 @@ auto VulkanEngine::createSwapchain() -> void
         VK_FORMAT_D32_SFLOAT_S8_UINT,
         VK_FORMAT_D24_UNORM_S8_UINT
     };
-    VkFormat depthFormat{ VK_FORMAT_UNDEFINED };
     for (VkFormat& format : depthFormatList)
     {
         VkFormatProperties2 formatProperties{ .sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2 };
         vkGetPhysicalDeviceFormatProperties2(m_physicalDevice, format, &formatProperties);
         if (formatProperties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
         {
-            depthFormat = format;
+            m_depthFormat = format;
             break;
         }
     }
-    assert(depthFormat != VK_FORMAT_UNDEFINED);
+    assert(m_depthFormat != VK_FORMAT_UNDEFINED);
     VkImageCreateInfo depthImageCI{
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .imageType = VK_IMAGE_TYPE_2D,
-        .format = depthFormat,
+        .format = m_depthFormat,
         .extent{
-            .width = static_cast<u32>(m_windowSize.x),
-            .height = static_cast<u32>(m_windowSize.y),
+            .width = static_cast<u32>(windowSize.x),
+            .height = static_cast<u32>(windowSize.y),
             .depth = 1
         },
         .mipLevels = 1,
@@ -610,16 +608,17 @@ auto VulkanEngine::createSwapchain() -> void
         .usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     };
+    m_depthImageCI = depthImageCI;
     VmaAllocationCreateInfo allocCI{
         .flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
         .usage = VMA_MEMORY_USAGE_AUTO
     };
-    chk(vmaCreateImage(m_allocator, &depthImageCI, &allocCI, &m_depthImage, &m_depthImageAllocation, nullptr));
+    chk(vmaCreateImage(m_allocator, &m_depthImageCI, &allocCI, &m_depthImage, &m_depthImageAllocation, nullptr));
     VkImageViewCreateInfo depthViewCI{
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         .image = m_depthImage,
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = depthFormat,
+        .format = m_depthFormat,
         .subresourceRange{
             .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
             .levelCount = 1,
@@ -629,6 +628,74 @@ auto VulkanEngine::createSwapchain() -> void
     chk(vkCreateImageView(m_device, &depthViewCI, nullptr, &m_depthImageView));
 }
 
+auto VulkanEngine::recreateSwapchain() -> void
+{
+    logger::logInfo("Recreate Swapchain");
+    chk(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_physicalDevice, m_surface, &m_surfaceCaps));
+    m_swapchainCI.oldSwapchain = m_swapchain;
+    m_swapchainCI.imageExtent = {
+        .width = static_cast<uint32_t>(windowSize.x),
+        .height = static_cast<uint32_t>(windowSize.y)
+    };
+    chk(vkCreateSwapchainKHR(m_device, &m_swapchainCI, nullptr, &m_swapchain));
+    for (u32 i = 0; i < m_imageCount; ++i)
+    {
+        vkDestroyImageView(m_device, m_swapchainImageViews[i], nullptr);
+    }
+    chk(vkGetSwapchainImagesKHR(m_device, m_swapchain, &m_imageCount, nullptr));
+    m_swapchainImages.resize(m_imageCount);
+    chk(vkGetSwapchainImagesKHR(m_device, m_swapchain, &m_imageCount, m_swapchainImages.data()));
+    m_swapchainImageViews.resize(m_imageCount);
+    for (u32 i = 0; i < m_imageCount; ++i)
+    {
+        VkImageViewCreateInfo viewCI{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .image = m_swapchainImages[i],
+            .viewType = VK_IMAGE_VIEW_TYPE_2D,
+            .format = m_imageFormat,
+            .subresourceRange = {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .levelCount = 1, .layerCount = 1
+            }
+        };
+        chk(vkCreateImageView(m_device, &viewCI, nullptr, &m_swapchainImageViews[i]));
+    }
+    for (auto& semaphore : m_renderCompleteSemaphores)
+    {
+        vkDestroySemaphore(m_device, semaphore, nullptr);
+    }
+    m_renderCompleteSemaphores.resize(m_imageCount);
+    for (auto& semaphore : m_renderCompleteSemaphores)
+    {
+        chk(vkCreateSemaphore(m_device, &m_semaphoreCI, nullptr, &semaphore));
+    }
+    vkDestroySwapchainKHR(m_device, m_swapchainCI.oldSwapchain, nullptr);
+    vmaDestroyImage(m_allocator, m_depthImage, m_depthImageAllocation);
+    vkDestroyImageView(m_device, m_depthImageView, nullptr);
+    m_depthImageCI.extent = {
+        .width = static_cast<uint32_t>(windowSize.x),
+        .height = static_cast<uint32_t>(windowSize.y),
+        .depth = 1
+    };
+    VmaAllocationCreateInfo allocCI{
+        .flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
+        .usage = VMA_MEMORY_USAGE_AUTO
+    };
+    chk(vmaCreateImage(m_allocator, &m_depthImageCI, &allocCI, &m_depthImage, &m_depthImageAllocation, nullptr));
+    VkImageViewCreateInfo viewCI{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = m_depthImage,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = m_depthFormat,
+        .subresourceRange = {
+            .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+            .levelCount = 1,
+            .layerCount = 1
+        }
+    };
+    chk(vkCreateImageView(m_device, &viewCI, nullptr, &m_depthImageView));
+}
+
 auto VulkanEngine::instance() -> VkInstance
 {
     return m_instance;
@@ -636,7 +703,6 @@ auto VulkanEngine::instance() -> VkInstance
 
 auto VulkanEngine::createSyncObjects() -> void
 {
-    VkSemaphoreCreateInfo semaphoreCI{ .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
     VkFenceCreateInfo fenceCI{
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
         .flags = VK_FENCE_CREATE_SIGNALED_BIT
@@ -644,12 +710,12 @@ auto VulkanEngine::createSyncObjects() -> void
     for (u32 i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
     {
         chk(vkCreateFence(m_device, &fenceCI, nullptr, &m_fences[i]));
-        chk(vkCreateSemaphore(m_device, &semaphoreCI, nullptr, &m_presentSemaphores[i]));
+        chk(vkCreateSemaphore(m_device, &m_semaphoreCI, nullptr, &m_imageAcquiredSemaphores[i]));
     }
-    m_renderSemaphores.resize(m_swapchainImages.size());
-    for (auto& semaphore : m_renderSemaphores)
+    m_renderCompleteSemaphores.resize(m_swapchainImages.size());
+    for (auto& semaphore : m_renderCompleteSemaphores)
     {
-        chk(vkCreateSemaphore(m_device, &semaphoreCI, nullptr, &semaphore));
+        chk(vkCreateSemaphore(m_device, &m_semaphoreCI, nullptr, &semaphore));
     }
 }
 

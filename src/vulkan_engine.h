@@ -89,8 +89,10 @@ class VulkanEngine
 {
 public:
     auto init(u32 extensionsCount, const char* const* requiredExtensions) -> void;
+    auto update() -> void;
     auto terminate() -> void;
     auto createSwapchain() -> void;
+    auto recreateSwapchain() -> void;
     auto render() -> void;
     auto reloadShader(ShaderID shader, u64 bufferSize, u32* bufferPointer) -> void;
     auto reloadPipeline(PipelineID pipeline, ShaderID shader, Blending blending) -> void;
@@ -111,11 +113,17 @@ public:
 
     auto createSyncObjects() -> void;
 
+
+    bool updateSwapchain{};
+    glm::ivec2 windowSize{};
+
 private:
     auto setAlphaBlendAttachment() -> VkPipelineColorBlendAttachmentState;
     auto createPipelineLayout() -> VkPipelineLayout;
     auto internalCreatePipeline(VkPipelineLayout layout, ShaderID shaderID, Blending blending = Blending::NONE) -> Pipeline;
     auto internalLoadShader(u64 bufferSize, u32* bufferPointer) -> VkShaderModule;
+
+    inline auto chkSwapchain(VkResult result) -> void;
 
     VkInstance m_instance{ VK_NULL_HANDLE };
     VkPhysicalDevice m_physicalDevice{ VK_NULL_HANDLE };
@@ -128,10 +136,15 @@ private:
     std::vector<VkImage> m_swapchainImages;
     std::vector<VkImageView> m_swapchainImageViews;
 	u32 m_imageCount;
+    VkSurfaceCapabilitiesKHR m_surfaceCaps{};
+    VkSwapchainCreateInfoKHR m_swapchainCI;
+    const VkFormat m_imageFormat{ VK_FORMAT_B8G8R8A8_UNORM };
 
     VkImage m_depthImage;
     VmaAllocation m_depthImageAllocation;
     VkImageView m_depthImageView;
+    VkImageCreateInfo m_depthImageCI;
+    VkFormat m_depthFormat{ VK_FORMAT_UNDEFINED };
 
     std::vector<MeshBuffer> m_meshBuffers;
     std::vector<GameObject> m_gameObjects;
@@ -140,8 +153,9 @@ private:
     std::vector<Pipeline> m_pipelines;
 
     std::array<VkFence, MAX_FRAMES_IN_FLIGHT> m_fences;
-    std::array<VkSemaphore, MAX_FRAMES_IN_FLIGHT> m_presentSemaphores;
-    std::vector<VkSemaphore> m_renderSemaphores;
+    std::array<VkSemaphore, MAX_FRAMES_IN_FLIGHT> m_imageAcquiredSemaphores;
+    std::vector<VkSemaphore> m_renderCompleteSemaphores;
+    VkSemaphoreCreateInfo m_semaphoreCI{ .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
 
     VkCommandPool m_commandPool{ VK_NULL_HANDLE };
     std::array<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT> m_commandBuffers;
@@ -152,11 +166,8 @@ private:
     VkDescriptorSetLayout m_descriptorSetLayoutTex{ VK_NULL_HANDLE };
     VkDescriptorSet m_descriptorSetTex{ VK_NULL_HANDLE };
 
-
     u32 m_frameIndex{ 0 };
     u32 m_imageIndex{ 0 };
-
-    glm::ivec2 m_windowSize{};
 
     VkDescriptorPool m_imguiPool;
 };

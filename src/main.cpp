@@ -43,15 +43,24 @@ auto main() -> i32
     bool quit = false;
     while (!quit)
     {
+        vulkanEngine.render();
+
         for (SDL_Event event; SDL_PollEvent(&event);)
         {
-            if (event.type == SDL_EVENT_QUIT) {
+            if (event.type == SDL_EVENT_QUIT)
+            {
                 quit = true;
                 break;
             }
+            if (event.type == SDL_EVENT_WINDOW_RESIZED)
+            {
+                chk(SDL_GetWindowSize(window, &windowSize.x, &windowSize.y));
+                vulkanEngine.windowSize = windowSize;
+                vulkanEngine.updateSwapchain = true;
+			}
         }
 
-        vulkanEngine.render();
+        vulkanEngine.update();
     }
 
     vulkanEngine.terminate();
