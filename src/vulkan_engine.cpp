@@ -319,18 +319,30 @@ auto VulkanEngine::render() -> void
     chk(vkEndCommandBuffer(cb));
 
     // Submit to graphics queue
-    VkPipelineStageFlags waitStages = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-    VkSubmitInfo submitInfo{
-        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-        .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &m_imageAcquiredSemaphores[m_frameIndex],
-        .pWaitDstStageMask = &waitStages,
-        .commandBufferCount = 1,
-        .pCommandBuffers = &cb,
-        .signalSemaphoreCount = 1,
-        .pSignalSemaphores = &m_renderCompleteSemaphores[m_imageIndex],
+    VkSemaphoreSubmitInfo waitSemaphoreInfo{
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+        .semaphore = m_imageAcquiredSemaphores[m_frameIndex],
+        .stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
     };
-    chk(vkQueueSubmit(m_queue, 1, &submitInfo, m_fences[m_frameIndex]));
+    VkCommandBufferSubmitInfo commandBufferSubmitInfo{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+        .commandBuffer = cb
+    };
+    VkSemaphoreSubmitInfo signalSemaphoreInfo{
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+        .semaphore = m_renderCompleteSemaphores[m_imageIndex],
+        .stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT
+    };
+    VkSubmitInfo2 submitInfo{
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+        .waitSemaphoreInfoCount = 1,
+        .pWaitSemaphoreInfos = &waitSemaphoreInfo,
+        .commandBufferInfoCount = 1,
+        .pCommandBufferInfos = &commandBufferSubmitInfo,
+        .signalSemaphoreInfoCount = 1,
+        .pSignalSemaphoreInfos = &signalSemaphoreInfo,
+    };
+    chk(vkQueueSubmit2(m_queue, 1, &submitInfo, m_fences[m_frameIndex]));
     m_frameIndex = (m_frameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
     VkPresentInfoKHR presentInfo{
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -1023,12 +1035,16 @@ auto VulkanEngine::loadTextureData(Texture& texture) -> void
         barrierTexInfo.pImageMemoryBarriers = &barrierTexRead;
         vkCmdPipelineBarrier2(cbOneTime, &barrierTexInfo);
         chk(vkEndCommandBuffer(cbOneTime));
-        VkSubmitInfo oneTimeSI{
-            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-            .commandBufferCount = 1,
-            .pCommandBuffers = &cbOneTime
+        VkCommandBufferSubmitInfo cbOneTimeSubmitInfo{
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+            .commandBuffer = cbOneTime
         };
-        chk(vkQueueSubmit(m_queue, 1, &oneTimeSI, fenceOneTime));
+        VkSubmitInfo2 oneTimeSI{
+            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+            .commandBufferInfoCount = 1,
+            .pCommandBufferInfos = &cbOneTimeSubmitInfo
+        };
+        chk(vkQueueSubmit2(m_queue, 1, &oneTimeSI, fenceOneTime));
         chk(vkWaitForFences(m_device, 1, &fenceOneTime, VK_TRUE, UINT64_MAX));
         vkDestroyFence(m_device, fenceOneTime, nullptr);
         vmaDestroyBuffer(m_allocator, imgSrcBuffer, imgSrcAllocation);
