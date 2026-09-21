@@ -70,3 +70,7 @@ Testing/
 
 # clangd config
 .clangd
+
+# macOS
+.DS_Store
+
