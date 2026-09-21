@@ -27,7 +27,7 @@ auto main() -> i32
     const char* const* instanceExtensions = SDL_Vulkan_GetInstanceExtensions(&instanceExtensionsCount);
 
     VulkanEngine vulkanEngine;
-    vulkanEngine.init(instanceExtensionsCount,instanceExtensions);
+    vulkanEngine.init(instanceExtensionsCount, instanceExtensions);
 
     SDL_Window* window = SDL_CreateWindow("How to Vulkan", 1280u, 720u, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
     chk(window != nullptr);
@@ -40,11 +40,12 @@ auto main() -> i32
     vulkanEngine.createSwapchain();
     vulkanEngine.createSyncObjects();
 
+    // load mesh
+    // load shader
+
     bool quit = false;
     while (!quit)
     {
-        vulkanEngine.render();
-
         for (SDL_Event event; SDL_PollEvent(&event);)
         {
             if (event.type == SDL_EVENT_QUIT)
@@ -61,6 +62,7 @@ auto main() -> i32
         }
 
         vulkanEngine.update();
+        vulkanEngine.render();
     }
 
     vulkanEngine.terminate();
