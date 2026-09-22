@@ -1,6 +1,6 @@
 #pragma once
 
-#include "asset.h"
+#include "assets.h"
 
 #include <slang/slang-com-ptr.h>
 
@@ -20,10 +20,9 @@ public:
     static auto loadShader(const char* shaderFile, std::string name) -> Shader*;
     static auto loadTexture(const char* textureFile, std::string name) -> Texture*;
 
-
+    static std::unordered_map<std::string, Model> models;
     static std::unordered_map<std::string, Shader> shaders;
     static std::unordered_map<std::string, Texture> textures;
-    static std::unordered_map<std::string, Model> models;
 
 private:
     static auto initShaderCompiler() -> void;
@@ -43,6 +42,6 @@ private:
     };
 
     static constexpr std::array<int, 6> m_indices{
-        0, 1, 2, 2, 3, 0
+        0, 3, 1, 3, 2, 1
     };
 };

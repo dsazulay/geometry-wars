@@ -2,6 +2,7 @@
 
 #include "base/types.h"
 #include "base/handle.h"
+#include "asset/assets.h"
 
 #define VK_NO_PROTOTYPES
 #include <vulkan/vulkan.h>
@@ -99,8 +100,8 @@ public:
 
     auto setSurfaceAndWindowSize(VkSurfaceKHR surface, u32 sizeX, u32 sizeY) -> void;
     auto createImguiDescriptorPool() -> void;
-    //auto loadMeshData(std::vector<Vertex>& vertices, std::vector<u16>& indices) -> MeshID;
-    //auto loadTextureData(Texture& texture) -> void;
+    auto loadMeshData(std::vector<Vertex>& vertices, std::vector<u16>& indices) -> MeshID;
+    auto loadTextureData(Texture& texture) -> void;
     auto loadShader(u64 bufferSize, u32* bufferPointer) -> ShaderID;
     auto setUniformData(GameObjectID id, void* data, u64 size) -> void;
     auto createPipeline(ShaderID shaderID, Blending blending = Blending::NONE) -> PipelineID;

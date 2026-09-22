@@ -432,7 +432,7 @@ auto VulkanEngine::createImguiDescriptorPool() -> void
 
     chk(vkCreateDescriptorPool(m_device, &pool_info, nullptr, &m_imguiPool));
 }
-/*
+
 auto VulkanEngine::loadMeshData(std::vector<Vertex>& vertices, std::vector<u16>& indices) -> MeshID
 {
     m_meshBuffers.push_back(MeshBuffer{});
@@ -459,7 +459,7 @@ auto VulkanEngine::loadMeshData(std::vector<Vertex>& vertices, std::vector<u16>&
 
     return MeshID(m_meshBuffers.size() - 1);
 }
-*/
+
 auto VulkanEngine::setAlphaBlendAttachment() -> VkPipelineColorBlendAttachmentState
 {
     return {
@@ -811,7 +811,7 @@ auto VulkanEngine::internalCreatePipeline(VkPipelineLayout layout, ShaderID shad
     };
     VkVertexInputBindingDescription vertexBinding{
         .binding = 0,
-        .stride = 0,//sizeof(Vertex),
+        .stride = sizeof(Vertex),
         .inputRate = VK_VERTEX_INPUT_RATE_VERTEX
     };
     std::vector<VkVertexInputAttributeDescription> vertexAttributes{
@@ -824,7 +824,7 @@ auto VulkanEngine::internalCreatePipeline(VkPipelineLayout layout, ShaderID shad
             .location = 1,
             .binding = 0,
             .format = VK_FORMAT_R32G32_SFLOAT,
-            .offset = 0//offsetof(Vertex, texCoord)
+            .offset = offsetof(Vertex, texCoord)
         },
     };
     VkPipelineVertexInputStateCreateInfo vertexInputState{
@@ -909,7 +909,7 @@ auto VulkanEngine::internalCreatePipeline(VkPipelineLayout layout, ShaderID shad
 
     return pipeline;
 }
-/*
+
 auto VulkanEngine::loadTextureData(Texture& texture) -> void
 {
     std::vector<VkDescriptorImageInfo> textureDescriptors{};
@@ -1122,4 +1122,5 @@ auto VulkanEngine::loadTextureData(Texture& texture) -> void
         .pImageInfo = textureDescriptors.data()
     };
     vkUpdateDescriptorSets(m_device, 1, &writeDescSet, 0, nullptr);
-}*/
+}
+
