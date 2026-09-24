@@ -44,6 +44,7 @@ find_library(SDL_LIBRARY NAMES SDL3 HINTS "$ENV{VULKAN_SDK}/lib" REQUIRED)
 add_executable(geometry-wars
     src/main.cpp
     src/vulkan_engine.cpp
+    src/game.cpp
     src/base/logger.cpp
     src/asset/resource_manager.cpp
 )
