@@ -18,9 +18,9 @@ struct Transform
         updateModel();
     }
 
-    auto pos() -> glm::vec3
+    auto pos() -> glm::vec2
     {
-        return pos_;
+        return { pos_.x, pos_.y };
     }
 
     auto posZ(float z) -> void
@@ -33,6 +33,11 @@ struct Transform
     {
         model_[0][0] = s.x;
         model_[1][1] = s.y;
+    }
+
+    auto scale() -> glm::vec2
+    {
+        return { model_[0][0], model_[1][1] };
     }
 
     auto model() -> glm::mat4

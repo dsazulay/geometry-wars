@@ -6,6 +6,7 @@
 #include "game.h"
 
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_timer.h>
 #include <SDL3/SDL_vulkan.h>
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
@@ -81,6 +82,8 @@ auto main() -> i32
     vulkanEngine.setUniformData(bgGO, &bgUniform, sizeof(BackgroundUniform));
 
     Game game;
+    game.gameWidth = WIDTH;
+    game.gameHeight= HEIGHT;
     game.init();
 
     GameObjectID entityGO = vulkanEngine.addGameObject(quadID, entityPipelineID);
@@ -89,8 +92,12 @@ auto main() -> i32
     vulkanEngine.createUniformBuffers();
 
     bool quit = false;
+    u64 previousFrameTime = SDL_GetTicks();
     while (!quit)
     {
+        u64 currentFrameTime = SDL_GetTicks();
+        f32 deltaTime = (currentFrameTime - previousFrameTime) / 1000.0f;
+
         // TODO: should move this?
         vulkanEngine.render();
 
@@ -128,12 +135,14 @@ auto main() -> i32
             game.accelerate({1.0f, 0.0f});
         }
 
-        game.update();
+        game.update(deltaTime);
 
         // NOTE: Copy relevant information from game
         entityUniform.model = game.player.transform.model();
 
         vulkanEngine.update();
+
+        previousFrameTime = currentFrameTime;
     }
 
     vulkanEngine.terminate();
