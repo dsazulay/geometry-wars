@@ -75,8 +75,8 @@ auto main() -> i32
 
     GameObjectID bgGO = vulkanEngine.addGameObject(quadID, entityPipelineID);
     Transform bgTransform;
-    bgTransform.pos(BG_POS);
     bgTransform.scale(BG_SCALE);
+    bgTransform.pos(BG_POS);
 
     BackgroundUniform bgUniform{ proj, bgTransform.model() };
     vulkanEngine.setUniformData(bgGO, &bgUniform, sizeof(BackgroundUniform));

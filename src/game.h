@@ -10,6 +10,7 @@ struct Player
     Transform transform;
     glm::vec2 acceleration;
     glm::vec2 velocity;
+    glm::vec2 reboundVelocity;
 };
 
 class Game
@@ -24,7 +25,7 @@ public:
     f32 gameWidth;
     f32 gameHeight;
 private:
-    auto decelerate() -> void;
+    auto decelerate(glm::vec2& vel, bool checkAcc) -> void;
     auto checkOutOfBounds(Transform& transform) -> glm::vec2;
 
 };
