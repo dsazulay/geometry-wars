@@ -118,23 +118,13 @@ auto main() -> i32
         }
 
         const bool* state = SDL_GetKeyboardState(NULL);
-        if (state[SDL_SCANCODE_W])
-        {
-            game.accelerate({0.0f, -1.0f});
-        }
-        if (state[SDL_SCANCODE_S])
-        {
-            game.accelerate({0.0f, 1.0f});
-        }
-        if (state[SDL_SCANCODE_A])
-        {
-            game.accelerate({-1.0f, 0.0f});
-        }
-        if (state[SDL_SCANCODE_D])
-        {
-            game.accelerate({1.0f, 0.0f});
-        }
+        glm::vec2 inputDir{ 0.0f };
+        if (state[SDL_SCANCODE_W]) inputDir.y += -1.0f;
+        if (state[SDL_SCANCODE_S]) inputDir.y +=  1.0f;
+        if (state[SDL_SCANCODE_A]) inputDir.x += -1.0f;
+        if (state[SDL_SCANCODE_D]) inputDir.x +=  1.0f;
 
+        game.accelerate(inputDir);
         game.update(deltaTime);
 
         // NOTE: Copy relevant information from game

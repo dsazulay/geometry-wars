@@ -1,12 +1,13 @@
 #include "game.h"
 
 #include "components.h"
+#include "glm/geometric.hpp"
 #include <cmath>
 
 constexpr f32 PLAYER_SPEED = 4.0f;
 constexpr f32 DRAG_SPEED = 0.03f;
 constexpr f32 BREAK_BOOST = 10.0f;
-constexpr glm::vec2 MAX_SPEED = { 200.0f, 200.0f };
+constexpr f32 MAX_SPEED = 200.0f;
 
 auto Game::init() -> void
 {
@@ -20,8 +21,12 @@ auto Game::init() -> void
 auto Game::update(f32 dt) -> void
 {
     player.velocity += player.acceleration;
-    player.velocity.x = glm::max(glm::min(player.velocity.x, MAX_SPEED.x), -MAX_SPEED.x);
-    player.velocity.y = glm::max(glm::min(player.velocity.y, MAX_SPEED.y), -MAX_SPEED.y);
+
+    f32 speed = glm::length(player.velocity);
+    if (speed > MAX_SPEED)
+    {
+        player.velocity = (player.velocity / speed) * MAX_SPEED;
+    }
 
     player.reboundVelocity += player.velocity * checkOutOfBounds(player.transform);
 
@@ -39,7 +44,9 @@ auto Game::update(f32 dt) -> void
 
 auto Game::accelerate(glm::vec2 dir) -> void
 {
-    player.acceleration += dir * PLAYER_SPEED;
+    if (glm::length(dir) <= 0.0f) return;
+
+    player.acceleration += glm::normalize(dir) * PLAYER_SPEED;
 
     if ((player.velocity.x > 0.0f && dir.x < 0.0f) ||
         (player.velocity.x < 0.0f && dir.x > 0.0f))
