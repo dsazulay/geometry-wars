@@ -1,5 +1,6 @@
 #include "resource_manager.h"
 
+#include "../base/logger.h"
 #include <slang/slang.h>
 #include <ktx.h>
 #include <ktxvulkan.h>
@@ -43,7 +44,7 @@ auto ResourceManager::loadShader(const char* shaderFile, std::string name) -> Sh
     {
         initShaderCompiler();
         initialized = true;
-        //LOG_INFO("Init slang session");
+        logger::logInfo("Init slang session");
     }
 
     Slang::ComPtr<slang::ISession> session;
@@ -57,7 +58,7 @@ auto ResourceManager::loadShader(const char* shaderFile, std::string name) -> Sh
 
     if (diagnostics)
     {
-        //LOG_ERROR("Slang diagnostics: {}", (char*)diagnostics->getBufferPointer());
+        logger::logError("Slang diagnostics: {}", (char*)diagnostics->getBufferPointer());
     }
 
     Slang::ComPtr<ISlangBlob> spirv;
