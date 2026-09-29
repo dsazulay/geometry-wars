@@ -102,17 +102,22 @@ auto Game::checkOutOfBounds(Transform& transform) -> glm::vec2
     glm::vec2 AA = transform.pos() - halfSize;
     glm::vec2 BB = transform.pos() + halfSize;
 
-    if (AA.x <= 0 || BB.x >= gameWidth)
+    float minWidth = 640 - gameWidth * 0.5f;
+    float maxWidth = 640 + gameWidth * 0.5f;
+    float minHeight = 360 - gameHeight * 0.5f;
+    float maxHeight = 360 + gameHeight * 0.5f;
+
+    if (AA.x <= minWidth || BB.x >= maxWidth)
     {
         glm::vec2 pos = transform.pos();
-        pos.x = glm::max(glm::min(pos.x, gameWidth - halfSize.x), halfSize.x);
+        pos.x = glm::max(glm::min(pos.x, maxWidth - halfSize.x), minWidth + halfSize.x);
         transform.pos(pos);
         return { -0.5f, 0.0f };
     }
-    else if (AA.y <= 0 || BB.y >= gameHeight)
+    else if (AA.y <= minHeight || BB.y >= maxHeight)
     {
         glm::vec2 pos = transform.pos();
-        pos.y = glm::max(glm::min(pos.y, gameHeight - halfSize.y), halfSize.y);
+        pos.y = glm::max(glm::min(pos.y, maxHeight - halfSize.y), minHeight + halfSize.y);
         transform.pos(pos);
         return { 0.0f, -0.5f };
     }

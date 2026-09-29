@@ -87,8 +87,8 @@ auto main() -> i32
     vulkanEngine.setUniformData(bgGO, &bgUniform, sizeof(BackgroundUniform));
 
     Game game;
-    game.gameWidth = WIDTH;
-    game.gameHeight= HEIGHT;
+    game.gameWidth = 700;
+    game.gameHeight= 700;
     game.init();
 
     GameObjectID entityGO = vulkanEngine.addGameObject(quadID, entityPipelineID);
