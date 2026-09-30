@@ -12,7 +12,7 @@ constexpr f32 MAX_SPEED = 200.0f;
 auto Game::init() -> void
 {
     player.transform.scale({ 36.0f, 36.0f });
-    player.transform.pos({ 640.0f, 320.0f, 0.0f });
+    player.transform.pos({ 0.0f, 0.0f, 0.0f });
     player.acceleration = { 0.0, 0.0 };
     player.velocity = { 0.0, 0.0 };
     player.reboundVelocity = { 0.0, 0.0 };
@@ -102,22 +102,20 @@ auto Game::checkOutOfBounds(Transform& transform) -> glm::vec2
     glm::vec2 AA = transform.pos() - halfSize;
     glm::vec2 BB = transform.pos() + halfSize;
 
-    float minWidth = 640 - gameWidth * 0.5f;
-    float maxWidth = 640 + gameWidth * 0.5f;
-    float minHeight = 360 - gameHeight * 0.5f;
-    float maxHeight = 360 + gameHeight * 0.5f;
+    float halfWidth = gameWidth * 0.5f;
+    float halfHeight = gameHeight * 0.5f;
 
-    if (AA.x <= minWidth || BB.x >= maxWidth)
+    if (AA.x <= -halfWidth || BB.x >= halfWidth)
     {
         glm::vec2 pos = transform.pos();
-        pos.x = glm::max(glm::min(pos.x, maxWidth - halfSize.x), minWidth + halfSize.x);
+        pos.x = glm::max(glm::min(pos.x, halfWidth - halfSize.x), -halfWidth + halfSize.x);
         transform.pos(pos);
         return { -0.5f, 0.0f };
     }
-    else if (AA.y <= minHeight || BB.y >= maxHeight)
+    else if (AA.y <= -halfHeight || BB.y >= halfHeight)
     {
         glm::vec2 pos = transform.pos();
-        pos.y = glm::max(glm::min(pos.y, maxHeight - halfSize.y), minHeight + halfSize.y);
+        pos.y = glm::max(glm::min(pos.y, halfHeight - halfSize.y), -halfWidth + halfSize.y);
         transform.pos(pos);
         return { 0.0f, -0.5f };
     }

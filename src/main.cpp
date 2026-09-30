@@ -14,7 +14,7 @@
 constexpr f32 WIDTH = 1280.0;
 constexpr f32 HEIGHT = 720.0;
 
-constexpr glm::vec3 BG_POS{ 640.0f, 360.0f, -0.1f };
+constexpr glm::vec3 BG_POS{ 0.0f, 0.0f, -0.1f };
 constexpr glm::vec2 BG_SCALE{ 700, 700 };
 
 struct BackgroundUniform
@@ -76,7 +76,7 @@ auto main() -> i32
     ShaderID bgShaderID = vulkanEngine.loadShader(bgShader->bufferSize, bgShader->bufferPointer);
     PipelineID bgPipelineID = vulkanEngine.createPipeline(bgShaderID);
 
-    glm::mat4 proj = glm::ortho(0.0f, WIDTH, 0.0f, HEIGHT, -1.0f, 1.0f);
+    glm::mat4 proj = glm::ortho(-(WIDTH * 0.5f), WIDTH * 0.5f, -(HEIGHT * 0.5f), HEIGHT * 0.5f, -1.0f, 1.0f);
 
     GameObjectID bgGO = vulkanEngine.addGameObject(quadID, bgPipelineID);
     Transform bgTransform;
