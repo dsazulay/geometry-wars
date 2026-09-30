@@ -85,6 +85,7 @@ auto ResourceManager::loadTexture(const char* textureFile, std::string name) -> 
     texture.height = ktxTex->baseHeight;
     texture.depth = ktxTex->baseDepth;
     texture.mipLevels = ktxTex->numLevels;
+    texture.format = ktxTexture_GetVkFormat(ktxTex);
 
     for (u32 j = 0; j < ktxTex->numLevels; ++j)
     {

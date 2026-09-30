@@ -56,6 +56,7 @@ struct Texture
     u32 height;
     u32 depth;
     u32 mipLevels;
+    u32 format;
     std::vector<u64> mipOffset;
     u64 dataSize;
     std::vector<u8> pData;

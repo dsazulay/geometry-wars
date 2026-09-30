@@ -918,8 +918,7 @@ auto VulkanEngine::loadTextureData(Texture& texture) -> void
         VkImageCreateInfo texImgCI{
             .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
             .imageType = VK_IMAGE_TYPE_2D,
-            //.format = ktxTexture_GetVkFormat(ktxTexture),
-            .format = VK_FORMAT_ASTC_4x4_UNORM_BLOCK,
+            .format = (VkFormat) texture.format,
             .extent = {
                 .width = texture.width,
                 .height = texture.height,
