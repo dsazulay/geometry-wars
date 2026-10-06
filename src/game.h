@@ -5,6 +5,7 @@
 #include "base/circular_array.h"
 
 #include <glm/vec2.hpp>
+#include <vector>
 
 struct Player
 {
@@ -30,6 +31,8 @@ public:
 
     Player player;
     CircularArray<Projectile, 8> projectiles;
+    std::vector<u32> deleteQueue;
+
     i32 activeProjectiles;
 
     f32 gameWidth;

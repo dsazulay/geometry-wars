@@ -22,6 +22,8 @@ auto Game::init() -> void
 
     activeProjectiles = 0;
     timeSinceLastShot = 0.0f;
+
+    deleteQueue.reserve(8);
 }
 
 auto Game::update(f32 dt, bool isMouseOnScreen, glm::vec2 mouseDir) -> void
@@ -54,10 +56,23 @@ auto Game::update(f32 dt, bool isMouseOnScreen, glm::vec2 mouseDir) -> void
         timeSinceLastShot = 0.0f;
     }
 
-    for (auto& p : projectiles)
+    for (u32 i = 0; i < projectiles.size(); ++i)
     {
+        auto& p = projectiles[i];
         p.transform.pos(p.transform.pos() + p.dir * PROJECTILE_VELOCITY * dt);
+        glm::vec2 outOfBound = checkOutOfBounds(p.transform);
+        if (outOfBound.x < 0.0f || outOfBound.y < 0.0f)
+        {
+            deleteQueue.push_back(i);
+        }
     }
+
+    for (u32 i : deleteQueue)
+    {
+        projectiles.swap_remove_at(i);
+    }
+
+    deleteQueue.clear();
 }
 
 auto Game::accelerate(glm::vec2 dir) -> void
