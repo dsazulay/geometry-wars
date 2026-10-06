@@ -102,6 +102,7 @@ public:
     auto createImguiDescriptorPool() -> void;
     auto loadMeshData(std::vector<Vertex>& vertices, std::vector<u16>& indices) -> MeshID;
     auto loadTextureData(Texture& texture) -> void;
+    auto createTextureDescriptors() -> void;
     auto loadShader(u64 bufferSize, u32* bufferPointer) -> ShaderID;
     auto setUniformData(GameObjectID id, void* data, u64 size) -> void;
     auto createPipeline(ShaderID shaderID, Blending blending = Blending::NONE) -> PipelineID;
@@ -161,7 +162,9 @@ private:
     VkCommandPool m_commandPool{ VK_NULL_HANDLE };
     std::array<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT> m_commandBuffers;
 
-    std::array<TextureGPU, 1> m_textures{};
+    std::array<TextureGPU, 2> m_textures{};
+    std::vector<VkDescriptorImageInfo> m_textureDescriptors{};
+    u64 m_textureCount{ 0 };
 
     VkDescriptorPool m_descriptorPool{ VK_NULL_HANDLE };
     VkDescriptorSetLayout m_descriptorSetLayoutTex{ VK_NULL_HANDLE };

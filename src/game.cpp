@@ -1,5 +1,6 @@
 #include "game.h"
 
+#include "base/logger.h"
 #include "components.h"
 #include "glm/geometric.hpp"
 #include <cmath>
@@ -8,6 +9,8 @@ constexpr f32 PLAYER_SPEED = 4.0f;
 constexpr f32 DRAG_SPEED = 0.03f;
 constexpr f32 BREAK_BOOST = 10.0f;
 constexpr f32 MAX_SPEED = 200.0f;
+constexpr f32 SHOOT_FREQ = 0.25f;
+constexpr f32 PROJECTILE_VELOCITY = 400.0f;
 
 auto Game::init() -> void
 {
@@ -16,9 +19,12 @@ auto Game::init() -> void
     player.acceleration = { 0.0, 0.0 };
     player.velocity = { 0.0, 0.0 };
     player.reboundVelocity = { 0.0, 0.0 };
+
+    activeProjectiles = 0;
+    timeSinceLastShot = 0.0f;
 }
 
-auto Game::update(f32 dt) -> void
+auto Game::update(f32 dt, bool isMouseOnScreen, glm::vec2 mouseDir) -> void
 {
     player.velocity += player.acceleration;
 
@@ -40,6 +46,18 @@ auto Game::update(f32 dt) -> void
     decelerate(player.reboundVelocity, false);
 
     player.acceleration = { 0.0f, 0.0f };
+
+    timeSinceLastShot += dt;
+    if (timeSinceLastShot >= SHOOT_FREQ && isMouseOnScreen)
+    {
+        shoot(mouseDir);
+        timeSinceLastShot = 0.0f;
+    }
+
+    for (auto& p : projectiles)
+    {
+        p.transform.pos(p.transform.pos() + p.dir * PROJECTILE_VELOCITY * dt);
+    }
 }
 
 auto Game::accelerate(glm::vec2 dir) -> void
@@ -63,6 +81,13 @@ auto Game::accelerate(glm::vec2 dir) -> void
 
 auto Game::shoot(glm::vec2 dir) -> void
 {
+    // TODO: check when mouse is on 0, 0
+    glm::vec2 shootDir = glm::normalize(dir - glm::vec2{640.0f, 360.0f} - player.transform.pos());
+    Transform t;
+    t.scale({ 20.0f, 20.0f });
+    t.pos(player.transform.pos());
+    projectiles.push_back({ t, shootDir });
+    
 }
 
 auto Game::decelerate(glm::vec2& vel, bool checkAcc) -> void

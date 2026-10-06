@@ -6,7 +6,6 @@
 #include "game.h"
 
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_timer.h>
 #include <SDL3/SDL_vulkan.h>
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
@@ -26,7 +25,8 @@ struct BackgroundUniform
 struct EntityUniform
 {
     glm::mat4 projection;
-    glm::mat4 model;
+    glm::mat4 model[100];
+    u32 tex[100];
 };
 
 static inline auto chk(bool result) -> void
@@ -60,13 +60,16 @@ auto main() -> i32
     vulkanEngine.createSwapchain();
     vulkanEngine.createSyncObjects();
 
-    Model* quad = ResourceManager::loadModel(NativeModel::Quad, "QuadModel");
-    Shader* texShader = ResourceManager::loadShader("resources/tex_shader.slang", "TextureShader");
-    Texture* spriteAtlas = ResourceManager::loadTexture("resources/player.ktx", "CardTexture");
+    Model* quad = ResourceManager::loadModel(NativeModel::Quad, "Quad");
+    Shader* texShader = ResourceManager::loadShader("resources/tex_shader.slang", "Texture");
+    Shader* bgShader = ResourceManager::loadShader("resources/bg_shader.slang", "Bg");
+    Texture* playerTex = ResourceManager::loadTexture("resources/player.ktx", "Player");
+    Texture* projectileTex = ResourceManager::loadTexture("resources/projectile.ktx", "Projectile");
 
-    Shader* bgShader = ResourceManager::loadShader("resources/bg_shader.slang", "BgShader");
+    vulkanEngine.loadTextureData(*playerTex);
+    vulkanEngine.loadTextureData(*projectileTex);
 
-    vulkanEngine.loadTextureData(*spriteAtlas);
+    vulkanEngine.createTextureDescriptors();
 
     MeshID quadID = vulkanEngine.loadMeshData(quad->vertices, quad->indices);
 
@@ -83,6 +86,10 @@ auto main() -> i32
     bgTransform.scale(BG_SCALE);
     bgTransform.pos(BG_POS);
 
+    Transform bulletTransfrom;
+    bulletTransfrom.scale({ 20, 20 });
+    bulletTransfrom.pos(BG_POS);
+
     BackgroundUniform bgUniform{ proj, bgTransform.model() };
     vulkanEngine.setUniformData(bgGO, &bgUniform, sizeof(BackgroundUniform));
 
@@ -92,11 +99,12 @@ auto main() -> i32
     game.init();
 
     GameObjectID entityGO = vulkanEngine.addGameObject(quadID, entityPipelineID);
-    EntityUniform entityUniform{ proj, game.player.transform.model() };
+    EntityUniform entityUniform{ proj, {}, {} };
     vulkanEngine.setUniformData(entityGO, &entityUniform, sizeof(EntityUniform));
     vulkanEngine.createUniformBuffers();
 
     bool quit = false;
+    bool isMouseOnScreen = false;
     u64 previousFrameTime = SDL_GetTicks();
     while (!quit)
     {
@@ -119,6 +127,14 @@ auto main() -> i32
                 vulkanEngine.windowSize = windowSize;
                 vulkanEngine.updateSwapchain = true;
             }
+            if (event.type == SDL_EVENT_WINDOW_MOUSE_ENTER)
+            {
+                isMouseOnScreen = true;
+            }
+            if (event.type == SDL_EVENT_WINDOW_MOUSE_LEAVE)
+            {
+                isMouseOnScreen = false;
+            }
 
         }
 
@@ -129,11 +145,25 @@ auto main() -> i32
         if (state[SDL_SCANCODE_A]) inputDir.x += -1.0f;
         if (state[SDL_SCANCODE_D]) inputDir.x +=  1.0f;
 
+        f32 mouseX, mouseY;
+        SDL_GetMouseState(&mouseX, &mouseY);
+
         game.accelerate(inputDir);
-        game.update(deltaTime);
+        game.update(deltaTime, isMouseOnScreen, { mouseX, mouseY });
 
         // NOTE: Copy relevant information from game
-        entityUniform.model = game.player.transform.model();
+        u64 entityCount = 0;
+        entityUniform.model[entityCount] = game.player.transform.model();
+        entityUniform.tex[entityCount] = 0;
+        ++entityCount;
+
+        for (auto& p : game.projectiles)
+        {
+            entityUniform.model[entityCount] = p.transform.model();
+            entityUniform.tex[entityCount] = 1;
+            ++entityCount;
+        }
+        vulkanEngine.updateGameObjectInstanceCount(entityGO, entityCount);
 
         vulkanEngine.update();
 
