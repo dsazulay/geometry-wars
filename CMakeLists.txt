@@ -46,6 +46,7 @@ add_executable(geometry-wars
     src/vulkan_engine.cpp
     src/game.cpp
     src/base/logger.cpp
+    src/base/random.cpp
     src/asset/resource_manager.cpp
 )
 
