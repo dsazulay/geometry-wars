@@ -162,7 +162,7 @@ private:
     VkCommandPool m_commandPool{ VK_NULL_HANDLE };
     std::array<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT> m_commandBuffers;
 
-    std::array<TextureGPU, 2> m_textures{};
+    std::array<TextureGPU, 5> m_textures{};
     std::vector<VkDescriptorImageInfo> m_textureDescriptors{};
     u64 m_textureCount{ 0 };
 

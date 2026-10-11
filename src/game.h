@@ -15,6 +15,19 @@ struct Player
     glm::vec2 reboundVelocity;
 };
 
+struct Enemy
+{
+    enum class Type
+    {
+        Square,
+        Circle,
+        Diamond
+    };
+
+    Transform transform;
+    Type type;
+};
+
 struct Projectile 
 {
     Transform transform;
@@ -28,9 +41,11 @@ public:
     auto update(f32 dt, bool isMouseOnScreen, glm::vec2 mouseDir) -> void;
     auto accelerate(glm::vec2 dir) -> void;
     auto shoot(glm::vec2 dir) -> void;
+    auto spawn() -> void;
 
     Player player;
     CircularArray<Projectile, 8> projectiles;
+    CircularArray<Enemy, 10> enemies;
     std::vector<u32> deleteQueue;
 
     i32 activeProjectiles;
@@ -42,4 +57,5 @@ private:
     auto checkOutOfBounds(Transform& transform) -> glm::vec2;
 
     f32 timeSinceLastShot;
+    f32 timeSinceLastSpawn;
 };

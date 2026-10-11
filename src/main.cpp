@@ -1,3 +1,4 @@
+#include "base/random.h"
 #include "base/types.h"
 #include "base/logger.h"
 #include "vulkan_engine.h"
@@ -40,6 +41,8 @@ static inline auto chk(bool result) -> void
 
 auto main() -> i32
 {
+    Random::init();
+
     chk(SDL_Init(SDL_INIT_VIDEO));
     chk(SDL_Vulkan_LoadLibrary(NULL));
 
@@ -65,9 +68,15 @@ auto main() -> i32
     Shader* bgShader = ResourceManager::loadShader("resources/bg_shader.slang", "Bg");
     Texture* playerTex = ResourceManager::loadTexture("resources/player.ktx", "Player");
     Texture* projectileTex = ResourceManager::loadTexture("resources/projectile.ktx", "Projectile");
+    Texture* squareTex = ResourceManager::loadTexture("resources/squaresquare.ktx", "Square");
+    Texture* circleTex = ResourceManager::loadTexture("resources/circle.ktx", "Circle");
+    Texture* diamondTex = ResourceManager::loadTexture("resources/diamond.ktx", "Diamond");
 
     vulkanEngine.loadTextureData(*playerTex);
     vulkanEngine.loadTextureData(*projectileTex);
+    vulkanEngine.loadTextureData(*squareTex);
+    vulkanEngine.loadTextureData(*circleTex);
+    vulkanEngine.loadTextureData(*diamondTex);
 
     vulkanEngine.createTextureDescriptors();
 
@@ -163,6 +172,14 @@ auto main() -> i32
             entityUniform.tex[entityCount] = 1;
             ++entityCount;
         }
+
+        for (auto& e : game.enemies)
+        {
+            entityUniform.model[entityCount] = e.transform.model();
+            entityUniform.tex[entityCount] = 2 + (i32) e.type;
+            ++entityCount;
+        }
+
         vulkanEngine.updateGameObjectInstanceCount(entityGO, entityCount);
 
         vulkanEngine.update();

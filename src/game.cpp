@@ -1,7 +1,7 @@
 #include "game.h"
 
-#include "base/logger.h"
 #include "components.h"
+#include "base/random.h"
 #include "glm/geometric.hpp"
 #include <cmath>
 
@@ -9,8 +9,14 @@ constexpr f32 PLAYER_SPEED = 4.0f;
 constexpr f32 DRAG_SPEED = 0.03f;
 constexpr f32 BREAK_BOOST = 10.0f;
 constexpr f32 MAX_SPEED = 200.0f;
+
 constexpr f32 SHOOT_FREQ = 0.25f;
 constexpr f32 PROJECTILE_VELOCITY = 400.0f;
+
+constexpr f32 ENEMY_SIZE = 75.0f;
+constexpr f32 ENEMY_HALFSIZE = ENEMY_SIZE / 2.0f;
+constexpr f32 SPAWN_RATE = 2.0f;
+constexpr u32 MAX_ENEMY_TYPE = 3;
 
 auto Game::init() -> void
 {
@@ -22,6 +28,8 @@ auto Game::init() -> void
 
     activeProjectiles = 0;
     timeSinceLastShot = 0.0f;
+
+    timeSinceLastSpawn = 0.0f;
 
     deleteQueue.reserve(8);
 }
@@ -54,6 +62,13 @@ auto Game::update(f32 dt, bool isMouseOnScreen, glm::vec2 mouseDir) -> void
     {
         shoot(mouseDir);
         timeSinceLastShot = 0.0f;
+    }
+
+    timeSinceLastSpawn += dt;
+    if (timeSinceLastSpawn >= SPAWN_RATE)
+    {
+        spawn();
+        timeSinceLastSpawn = 0.0f;
     }
 
     for (u32 i = 0; i < projectiles.size(); ++i)
@@ -103,6 +118,17 @@ auto Game::shoot(glm::vec2 dir) -> void
     t.pos(player.transform.pos());
     projectiles.push_back({ t, shootDir });
     
+}
+
+auto Game::spawn() -> void
+{
+    i32 x = Random::randInt(gameWidth - ENEMY_SIZE) - (gameWidth / 2.0f - ENEMY_HALFSIZE);
+    i32 y = Random::randInt(gameHeight - ENEMY_SIZE) - (gameHeight/ 2.0f - ENEMY_HALFSIZE);
+    Enemy::Type type = (Enemy::Type) Random::randInt(MAX_ENEMY_TYPE);
+    Transform t;
+    t.scale({ ENEMY_SIZE, ENEMY_SIZE });
+    t.pos({ x, y });
+    enemies.push_back({ t, type });
 }
 
 auto Game::decelerate(glm::vec2& vel, bool checkAcc) -> void
