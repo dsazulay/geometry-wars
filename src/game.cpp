@@ -32,6 +32,7 @@ auto Game::init() -> void
     timeSinceLastSpawn = 0.0f;
 
     deleteQueue.reserve(8);
+    enemyDeleteQueue.reserve(10);
 }
 
 auto Game::update(f32 dt, bool isMouseOnScreen, glm::vec2 mouseDir) -> void
@@ -79,6 +80,17 @@ auto Game::update(f32 dt, bool isMouseOnScreen, glm::vec2 mouseDir) -> void
         if (outOfBound.x < 0.0f || outOfBound.y < 0.0f)
         {
             deleteQueue.push_back(i);
+            continue;
+        }
+
+        for (u32 j = 0; j < enemies.size(); ++j)
+        {
+            auto& e = enemies[j];
+            if (checkCollision(p.transform, e.transform))
+            {
+                deleteQueue.push_back(i);
+                enemyDeleteQueue.push_back(j);
+            }
         }
     }
 
@@ -87,7 +99,13 @@ auto Game::update(f32 dt, bool isMouseOnScreen, glm::vec2 mouseDir) -> void
         projectiles.swap_remove_at(i);
     }
 
+    for (u32 i : enemyDeleteQueue)
+    {
+        enemies.swap_remove_at(i);
+    }
+
     deleteQueue.clear();
+    enemyDeleteQueue.clear();
 }
 
 auto Game::accelerate(glm::vec2 dir) -> void
@@ -187,4 +205,22 @@ auto Game::checkOutOfBounds(Transform& transform) -> glm::vec2
     }
 
     return { 0.0f, 0.0f };
+}
+
+auto Game::checkCollision(Transform& a, Transform& b) -> bool
+{
+    glm::vec2 halfSize = a.scale() * 0.5f;
+    glm::vec2 AA = a.pos() - halfSize;
+    glm::vec2 BB = a.pos() + halfSize;
+
+    halfSize = b.scale() * 0.5f;
+    glm::vec2 CC = b.pos() - halfSize;
+    glm::vec2 DD = b.pos() + halfSize;
+
+    if (BB.x < CC.x) return false;
+    if (AA.x > DD.x) return false;
+    if (BB.y < CC.y) return false;
+    if (AA.y > DD.y) return false;
+
+    return true;
 }

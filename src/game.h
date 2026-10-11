@@ -47,6 +47,7 @@ public:
     CircularArray<Projectile, 8> projectiles;
     CircularArray<Enemy, 10> enemies;
     std::vector<u32> deleteQueue;
+    std::vector<u32> enemyDeleteQueue;
 
     i32 activeProjectiles;
 
@@ -55,6 +56,7 @@ public:
 private:
     auto decelerate(glm::vec2& vel, bool checkAcc) -> void;
     auto checkOutOfBounds(Transform& transform) -> glm::vec2;
+    auto checkCollision(Transform& a, Transform& b) -> bool;
 
     f32 timeSinceLastShot;
     f32 timeSinceLastSpawn;
