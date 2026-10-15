@@ -22,9 +22,9 @@ auto Game::init() -> void
 {
     player.transform.scale({ 36.0f, 36.0f });
     player.transform.pos({ 0.0f, 0.0f, 0.0f });
-    player.acceleration = { 0.0, 0.0 };
-    player.velocity = { 0.0, 0.0 };
-    player.reboundVelocity = { 0.0, 0.0 };
+    player.body.acceleration = { 0.0, 0.0 };
+    player.body.velocity = { 0.0, 0.0 };
+    player.body.reboundVelocity = { 0.0, 0.0 };
 
     activeProjectiles = 0;
     timeSinceLastShot = 0.0f;
@@ -35,28 +35,50 @@ auto Game::init() -> void
     enemyDeleteQueue.reserve(10);
 }
 
-auto Game::update(f32 dt, bool isMouseOnScreen, glm::vec2 mouseDir) -> void
+auto Game::update(f32 dt, bool isMouseOnScreen, glm::vec2 mouseDir, glm::vec2 inputDir) -> void
 {
-    player.velocity += player.acceleration;
+    accelerate(player.body, inputDir);
+    player.body.velocity += player.body.acceleration;
 
-    f32 speed = glm::length(player.velocity);
+    f32 speed = glm::length(player.body.velocity);
     if (speed > MAX_SPEED)
     {
-        player.velocity = (player.velocity / speed) * MAX_SPEED;
+        player.body.velocity = (player.body.velocity / speed) * MAX_SPEED;
     }
 
-    player.reboundVelocity += player.velocity * checkOutOfBounds(player.transform);
+    player.body.reboundVelocity += player.body.velocity * checkOutOfBounds(player.transform);
 
-    f32 angle = atan2(-player.velocity.y, -player.velocity.x);
+    f32 angle = atan2(-player.body.velocity.y, -player.body.velocity.x);
     player.transform.angle(angle);
 
     glm::vec2 pos = player.transform.pos();
-    player.transform.pos(pos + (player.velocity + player.reboundVelocity) * dt);
+    player.transform.pos(pos + (player.body.velocity + player.body.reboundVelocity) * dt);
 
-    decelerate(player.velocity, true);
-    decelerate(player.reboundVelocity, false);
+    decelerate(player.body.velocity, true);
+    decelerate(player.body.reboundVelocity, false);
 
-    player.acceleration = { 0.0f, 0.0f };
+    player.body.acceleration = { 0.0f, 0.0f };
+
+    for (auto& e : enemies)
+    {
+        accelerate(e.body, player.transform.pos() - e.transform.pos());
+        e.body.velocity += e.body.acceleration;
+        speed = glm::length(e.body.velocity);
+        if (speed > MAX_SPEED)
+        {
+            e.body.velocity = (e.body.velocity / speed) * MAX_SPEED;
+        }
+
+        e.body.reboundVelocity += e.body.velocity * checkOutOfBounds(e.transform);
+
+        pos = e.transform.pos();
+        e.transform.pos(pos + (e.body.velocity + e.body.reboundVelocity) * dt);
+
+        decelerate(e.body.velocity, false);
+        decelerate(e.body.reboundVelocity, false);
+
+        e.body.acceleration = { 0.0f, 0.0f };
+    }
 
     timeSinceLastShot += dt;
     if (timeSinceLastShot >= SHOOT_FREQ && isMouseOnScreen)
@@ -108,22 +130,22 @@ auto Game::update(f32 dt, bool isMouseOnScreen, glm::vec2 mouseDir) -> void
     enemyDeleteQueue.clear();
 }
 
-auto Game::accelerate(glm::vec2 dir) -> void
+auto Game::accelerate(Body& body, glm::vec2 dir) -> void
 {
     if (glm::length(dir) <= 0.0f) return;
 
-    player.acceleration += glm::normalize(dir) * PLAYER_SPEED;
+    body.acceleration += glm::normalize(dir) * PLAYER_SPEED;
 
-    if ((player.velocity.x > 0.0f && dir.x < 0.0f) ||
-        (player.velocity.x < 0.0f && dir.x > 0.0f))
+    if ((body.velocity.x > 0.0f && dir.x < 0.0f) ||
+        (body.velocity.x < 0.0f && dir.x > 0.0f))
     {
-        player.acceleration.x *= BREAK_BOOST;
+        body.acceleration.x *= BREAK_BOOST;
     }
 
-    if ((player.velocity.y > 0.0f && dir.y < 0.0f) ||
-        (player.velocity.y < 0.0f && dir.y > 0.0f))
+    if ((body.velocity.y > 0.0f && dir.y < 0.0f) ||
+        (body.velocity.y < 0.0f && dir.y > 0.0f))
     {
-        player.acceleration.y *= BREAK_BOOST;
+        body.acceleration.y *= BREAK_BOOST;
     }
 }
 
@@ -135,7 +157,6 @@ auto Game::shoot(glm::vec2 dir) -> void
     t.scale({ 20.0f, 20.0f });
     t.pos(player.transform.pos());
     projectiles.push_back({ t, shootDir });
-    
 }
 
 auto Game::spawn() -> void
@@ -146,12 +167,12 @@ auto Game::spawn() -> void
     Transform t;
     t.scale({ ENEMY_SIZE, ENEMY_SIZE });
     t.pos({ x, y });
-    enemies.push_back({ t, type });
+    enemies.push_back({ t, {}, type });
 }
 
 auto Game::decelerate(glm::vec2& vel, bool checkAcc) -> void
 {
-    if (!checkAcc || (player.acceleration.x < 0.001f && player.acceleration.x > -0.001f))
+    if (!checkAcc || (player.body.acceleration.x < 0.001f && player.body.acceleration.x > -0.001f))
     {
         if (vel.x > 0.0)
         {
@@ -165,7 +186,7 @@ auto Game::decelerate(glm::vec2& vel, bool checkAcc) -> void
         }
     }
 
-    if (!checkAcc || (player.acceleration.y < 0.001f && player.acceleration.y > -0.001f))
+    if (!checkAcc || (player.body.acceleration.y < 0.001f && player.body.acceleration.y > -0.001f))
     {
         if (vel.y > 0.0)
         {

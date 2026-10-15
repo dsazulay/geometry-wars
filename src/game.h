@@ -7,12 +7,17 @@
 #include <glm/vec2.hpp>
 #include <vector>
 
-struct Player
+struct Body
 {
-    Transform transform;
     glm::vec2 acceleration;
     glm::vec2 velocity;
     glm::vec2 reboundVelocity;
+};
+
+struct Player
+{
+    Transform transform;
+    Body body;
 };
 
 struct Enemy
@@ -25,6 +30,7 @@ struct Enemy
     };
 
     Transform transform;
+    Body body;
     Type type;
 };
 
@@ -38,8 +44,8 @@ class Game
 {
 public:
     auto init() -> void;
-    auto update(f32 dt, bool isMouseOnScreen, glm::vec2 mouseDir) -> void;
-    auto accelerate(glm::vec2 dir) -> void;
+    auto update(f32 dt, bool isMouseOnScreen, glm::vec2 mouseDir, glm::vec2 inputDir) -> void;
+    auto accelerate(Body& body, glm::vec2 dir) -> void;
     auto shoot(glm::vec2 dir) -> void;
     auto spawn() -> void;
 

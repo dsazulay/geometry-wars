@@ -157,8 +157,7 @@ auto main() -> i32
         f32 mouseX, mouseY;
         SDL_GetMouseState(&mouseX, &mouseY);
 
-        game.accelerate(inputDir);
-        game.update(deltaTime, isMouseOnScreen, { mouseX, mouseY });
+        game.update(deltaTime, isMouseOnScreen, { mouseX, mouseY }, inputDir);
 
         // NOTE: Copy relevant information from game
         u64 entityCount = 0;
