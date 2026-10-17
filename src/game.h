@@ -18,6 +18,7 @@ struct Player
 {
     Transform transform;
     Body body;
+    bool isDead;
 };
 
 struct Enemy

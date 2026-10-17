@@ -161,9 +161,12 @@ auto main() -> i32
 
         // NOTE: Copy relevant information from game
         u64 entityCount = 0;
-        entityUniform.model[entityCount] = game.player.transform.model();
-        entityUniform.tex[entityCount] = 0;
-        ++entityCount;
+        if (!game.player.isDead)
+        {
+            entityUniform.model[entityCount] = game.player.transform.model();
+            entityUniform.tex[entityCount] = 0;
+            ++entityCount;
+        }
 
         for (auto& p : game.projectiles)
         {

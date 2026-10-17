@@ -25,6 +25,7 @@ auto Game::init() -> void
     player.body.acceleration = { 0.0, 0.0 };
     player.body.velocity = { 0.0, 0.0 };
     player.body.reboundVelocity = { 0.0, 0.0 };
+    player.isDead = false;
 
     activeProjectiles = 0;
     timeSinceLastShot = 0.0f;
@@ -37,33 +38,56 @@ auto Game::init() -> void
 
 auto Game::update(f32 dt, bool isMouseOnScreen, glm::vec2 mouseDir, glm::vec2 inputDir) -> void
 {
-    accelerate(player.body, inputDir);
-    player.body.velocity += player.body.acceleration;
-
-    f32 speed = glm::length(player.body.velocity);
-    if (speed > MAX_SPEED)
+    if (!player.isDead)
     {
-        player.body.velocity = (player.body.velocity / speed) * MAX_SPEED;
+        accelerate(player.body, inputDir);
+        player.body.velocity += player.body.acceleration;
+
+        f32 speed = glm::length(player.body.velocity);
+        if (speed > MAX_SPEED)
+        {
+            player.body.velocity = (player.body.velocity / speed) * MAX_SPEED;
+        }
+
+        player.body.reboundVelocity += player.body.velocity * checkOutOfBounds(player.transform);
+
+        f32 angle = atan2(-player.body.velocity.y, -player.body.velocity.x);
+        player.transform.angle(angle);
+
+        glm::vec2 pos = player.transform.pos();
+        player.transform.pos(pos + (player.body.velocity + player.body.reboundVelocity) * dt);
+
+        decelerate(player.body.velocity, true);
+        decelerate(player.body.reboundVelocity, false);
+
+        player.body.acceleration = { 0.0f, 0.0f };
+
+        timeSinceLastShot += dt;
+        if (timeSinceLastShot >= SHOOT_FREQ && isMouseOnScreen)
+        {
+            shoot(mouseDir);
+            timeSinceLastShot = 0.0f;
+        }
+
+        timeSinceLastSpawn += dt;
+        if (timeSinceLastSpawn >= SPAWN_RATE)
+        {
+            spawn();
+            timeSinceLastSpawn = 0.0f;
+        }
     }
 
-    player.body.reboundVelocity += player.body.velocity * checkOutOfBounds(player.transform);
-
-    f32 angle = atan2(-player.body.velocity.y, -player.body.velocity.x);
-    player.transform.angle(angle);
-
-    glm::vec2 pos = player.transform.pos();
-    player.transform.pos(pos + (player.body.velocity + player.body.reboundVelocity) * dt);
-
-    decelerate(player.body.velocity, true);
-    decelerate(player.body.reboundVelocity, false);
-
-    player.body.acceleration = { 0.0f, 0.0f };
-
-    for (auto& e : enemies)
+    for (u32 i = 0; i < enemies.size(); ++i)
     {
-        accelerate(e.body, player.transform.pos() - e.transform.pos());
+        auto& e = enemies[i];
+
+        if (!player.isDead)
+        {
+            accelerate(e.body, player.transform.pos() - e.transform.pos());
+        }
+
         e.body.velocity += e.body.acceleration;
-        speed = glm::length(e.body.velocity);
+        f32 speed = glm::length(e.body.velocity);
         if (speed > MAX_SPEED)
         {
             e.body.velocity = (e.body.velocity / speed) * MAX_SPEED;
@@ -71,27 +95,27 @@ auto Game::update(f32 dt, bool isMouseOnScreen, glm::vec2 mouseDir, glm::vec2 in
 
         e.body.reboundVelocity += e.body.velocity * checkOutOfBounds(e.transform);
 
-        pos = e.transform.pos();
+        for (u32 j = i + 1; j < enemies.size(); ++j)
+        {
+            if (checkCollision(e.transform, enemies[j].transform))
+            {
+                e.body.velocity = { 0.0f, 0.0f };
+                e.body.reboundVelocity = { 0.0f, 0.0f };
+            }
+        }
+
+        glm::vec2 pos = e.transform.pos();
         e.transform.pos(pos + (e.body.velocity + e.body.reboundVelocity) * dt);
 
         decelerate(e.body.velocity, false);
         decelerate(e.body.reboundVelocity, false);
 
         e.body.acceleration = { 0.0f, 0.0f };
-    }
 
-    timeSinceLastShot += dt;
-    if (timeSinceLastShot >= SHOOT_FREQ && isMouseOnScreen)
-    {
-        shoot(mouseDir);
-        timeSinceLastShot = 0.0f;
-    }
-
-    timeSinceLastSpawn += dt;
-    if (timeSinceLastSpawn >= SPAWN_RATE)
-    {
-        spawn();
-        timeSinceLastSpawn = 0.0f;
+        if (checkCollision(player.transform, e.transform))
+        {
+            //player.isDead = true;
+        }
     }
 
     for (u32 i = 0; i < projectiles.size(); ++i)
@@ -161,12 +185,26 @@ auto Game::shoot(glm::vec2 dir) -> void
 
 auto Game::spawn() -> void
 {
-    i32 x = Random::randInt(gameWidth - ENEMY_SIZE) - (gameWidth / 2.0f - ENEMY_HALFSIZE);
-    i32 y = Random::randInt(gameHeight - ENEMY_SIZE) - (gameHeight/ 2.0f - ENEMY_HALFSIZE);
     Enemy::Type type = (Enemy::Type) Random::randInt(MAX_ENEMY_TYPE);
     Transform t;
-    t.scale({ ENEMY_SIZE, ENEMY_SIZE });
-    t.pos({ x, y });
+    bool isEmptySpace = false;
+    while (!isEmptySpace)
+    {
+        isEmptySpace = true;
+        i32 x = Random::randInt(gameWidth - ENEMY_SIZE) - (gameWidth / 2.0f - ENEMY_HALFSIZE);
+        i32 y = Random::randInt(gameHeight - ENEMY_SIZE) - (gameHeight/ 2.0f - ENEMY_HALFSIZE);
+        t.scale({ ENEMY_SIZE, ENEMY_SIZE });
+        t.pos({ x, y });
+
+        for (auto& e : enemies)
+        {
+            if (checkCollision(t, e.transform))
+            {
+                isEmptySpace = false;
+                break;
+            }
+        }
+    }
     enemies.push_back({ t, {}, type });
 }
 
