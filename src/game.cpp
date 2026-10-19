@@ -24,7 +24,6 @@ auto Game::init() -> void
     player.transform.pos({ 0.0f, 0.0f, 0.0f });
     player.body.acceleration = { 0.0, 0.0 };
     player.body.velocity = { 0.0, 0.0 };
-    player.body.reboundVelocity = { 0.0, 0.0 };
     player.isDead = false;
 
     activeProjectiles = 0;
@@ -49,16 +48,18 @@ auto Game::update(f32 dt, bool isMouseOnScreen, glm::vec2 mouseDir, glm::vec2 in
             player.body.velocity = (player.body.velocity / speed) * MAX_SPEED;
         }
 
-        player.body.reboundVelocity += player.body.velocity * checkOutOfBounds(player.transform);
-
         f32 angle = atan2(-player.body.velocity.y, -player.body.velocity.x);
         player.transform.angle(angle);
 
         glm::vec2 pos = player.transform.pos();
-        player.transform.pos(pos + (player.body.velocity + player.body.reboundVelocity) * dt);
+        glm::vec2 newPos = pos + player.body.velocity * dt;
+        Transform t = player.transform;
+        t.pos(newPos);
+
+        glm::vec2 deltaPos = (newPos - pos) * checkOutOfBounds(t);
+        player.transform.pos(pos + deltaPos);
 
         decelerate(player.body.velocity, true);
-        decelerate(player.body.reboundVelocity, false);
 
         player.body.acceleration = { 0.0f, 0.0f };
 
@@ -93,22 +94,28 @@ auto Game::update(f32 dt, bool isMouseOnScreen, glm::vec2 mouseDir, glm::vec2 in
             e.body.velocity = (e.body.velocity / speed) * MAX_SPEED;
         }
 
-        e.body.reboundVelocity += e.body.velocity * checkOutOfBounds(e.transform);
+        glm::vec2 pos = e.transform.pos();
+        glm::vec2 newPos = pos + e.body.velocity * dt;
+        Transform t = e.transform;
+        t.pos(newPos);
 
-        for (u32 j = i + 1; j < enemies.size(); ++j)
+        f32 collision = 1.0f;
+        for (u32 j = 0; j < enemies.size(); ++j)
         {
-            if (checkCollision(e.transform, enemies[j].transform))
+            if (j == i) continue;
+
+            if (checkCollision(t, enemies[j].transform))
             {
-                e.body.velocity = { 0.0f, 0.0f };
-                e.body.reboundVelocity = { 0.0f, 0.0f };
+                e.body.velocity = (t.pos() - enemies[j].transform.pos()) * 2.0f;
+                collision = 0.0f;
+                break;
             }
         }
 
-        glm::vec2 pos = e.transform.pos();
-        e.transform.pos(pos + (e.body.velocity + e.body.reboundVelocity) * dt);
+        glm::vec2 deltaPos = (newPos - pos) * checkOutOfBounds(t) * collision;
+        e.transform.pos(pos + deltaPos);
 
         decelerate(e.body.velocity, false);
-        decelerate(e.body.reboundVelocity, false);
 
         e.body.acceleration = { 0.0f, 0.0f };
 
@@ -123,7 +130,7 @@ auto Game::update(f32 dt, bool isMouseOnScreen, glm::vec2 mouseDir, glm::vec2 in
         auto& p = projectiles[i];
         p.transform.pos(p.transform.pos() + p.dir * PROJECTILE_VELOCITY * dt);
         glm::vec2 outOfBound = checkOutOfBounds(p.transform);
-        if (outOfBound.x < 0.0f || outOfBound.y < 0.0f)
+        if (outOfBound.x < 1.0f || outOfBound.y < 1.0f)
         {
             deleteQueue.push_back(i);
             continue;
@@ -185,6 +192,8 @@ auto Game::shoot(glm::vec2 dir) -> void
 
 auto Game::spawn() -> void
 {
+    if (enemies.size() >= MAX_ENEMIES) return;
+
     Enemy::Type type = (Enemy::Type) Random::randInt(MAX_ENEMY_TYPE);
     Transform t;
     bool isEmptySpace = false;
@@ -248,22 +257,23 @@ auto Game::checkOutOfBounds(Transform& transform) -> glm::vec2
     float halfWidth = gameWidth * 0.5f;
     float halfHeight = gameHeight * 0.5f;
 
+    glm::vec2 outOfBounds = { 1.0f, 1.0f };
     if (AA.x <= -halfWidth || BB.x >= halfWidth)
     {
         glm::vec2 pos = transform.pos();
         pos.x = glm::max(glm::min(pos.x, halfWidth - halfSize.x), -halfWidth + halfSize.x);
         transform.pos(pos);
-        return { -0.5f, 0.0f };
+        outOfBounds.x = 0.0f;
     }
-    else if (AA.y <= -halfHeight || BB.y >= halfHeight)
+    if (AA.y <= -halfHeight || BB.y >= halfHeight)
     {
         glm::vec2 pos = transform.pos();
         pos.y = glm::max(glm::min(pos.y, halfHeight - halfSize.y), -halfWidth + halfSize.y);
         transform.pos(pos);
-        return { 0.0f, -0.5f };
+        outOfBounds.y = 0.0f;
     }
 
-    return { 0.0f, 0.0f };
+    return outOfBounds;
 }
 
 auto Game::checkCollision(Transform& a, Transform& b) -> bool

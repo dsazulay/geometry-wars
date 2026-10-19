@@ -7,11 +7,13 @@
 #include <glm/vec2.hpp>
 #include <vector>
 
+constexpr u32 MAX_PROJECTILES = 10;
+constexpr u32 MAX_ENEMIES = 10;
+
 struct Body
 {
     glm::vec2 acceleration;
     glm::vec2 velocity;
-    glm::vec2 reboundVelocity;
 };
 
 struct Player
@@ -51,8 +53,8 @@ public:
     auto spawn() -> void;
 
     Player player;
-    CircularArray<Projectile, 8> projectiles;
-    CircularArray<Enemy, 10> enemies;
+    CircularArray<Projectile, MAX_PROJECTILES> projectiles;
+    CircularArray<Enemy, MAX_ENEMIES> enemies;
     std::vector<u32> deleteQueue;
     std::vector<u32> enemyDeleteQueue;
 
